@@ -89,10 +89,10 @@ main {
 
     // Hienosäätö
     if(get_val(SHARE)){
-        if(event_press(UP))    { AR_Y = clampi(AR_Y+1, -AR_MAX, AR_MAX); combo_run(Ping); }
-        if(event_press(DOWN))  { AR_Y = clampi(AR_Y-1, -AR_MAX, AR_MAX); combo_run(Ping); }
-        if(event_press(RIGHT)) { AR_X = clampi(AR_X+1, -AR_MAX, AR_MAX); combo_run(Ping); }
-        if(event_press(LEFT))  { AR_X = clampi(AR_X-1, -AR_MAX, AR_MAX); combo_run(Ping); }
+        if(event_press(UP))    { AR_Y = clampi(AR_Y + 1, -AR_MAX, AR_MAX); combo_run(Ping); }
+        if(event_press(DOWN))  { AR_Y = clampi(AR_Y - 1, -AR_MAX, AR_MAX); combo_run(Ping); }
+        if(event_press(RIGHT)) { AR_X = clampi(AR_X + 1, -AR_MAX, AR_MAX); combo_run(Ping); }
+        if(event_press(LEFT))  { AR_X = clampi(AR_X - 1, -AR_MAX, AR_MAX); combo_run(Ping); }
     }
 
     // Anti-Recoil (ADS + FIRE)
@@ -123,17 +123,19 @@ main {
         } else { combo_stop(AA_Star); was_ads=FALSE; }
     } else { combo_stop(AA_Star); was_ads=FALSE; }
 
-    // Kevyt rotaatioboosti (oletuksena pois)
-    if(ROT_ON && get_val(ADS) > 10){
-        if(abs(get_val(RX_AX)) < DEADZONE && abs(get_val(RY_AX)) < DEADZONE){
-            set_val(LX_AX, clampi(get_val(LX_AX) + (rot_dir>0 ? ROT_STEP : -ROT_STEP), -100, 100));
-            if(!combo_running(RotateFlip)) combo_run(RotateFlip);
+if(ROT_ON && get_val(ADS) > 10){
+    if(abs(get_val(RX_AX)) < DEADZONE && abs(get_val(RY_AX)) < DEADZONE){
+        if(rot_dir > 0) {
+            set_val(LX_AX, clampi(get_val(LX_AX) + ROT_STEP, -100, 100));
         } else {
-            combo_stop(RotateFlip);
+            set_val(LX_AX, clampi(get_val(LX_AX) - ROT_STEP, -100, 100));
         }
+        if(!combo_running(RotateFlip)) combo_run(RotateFlip);
     } else {
         combo_stop(RotateFlip);
     }
+} else {
+    combo_stop(RotateFlip);
 }
 
 combo AA_Star {
@@ -151,4 +153,5 @@ combo RotateFlip {
     wait(ROT_WAIT);
     rot_dir = -rot_dir;
 }
+
 
