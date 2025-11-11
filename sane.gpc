@@ -43,7 +43,6 @@ int rot_dir = 1;
 
 int was_ads = FALSE;
 
-// --- etukäteen varatut apumuuttujat (korjaa 'unexpected NAME' -virheen) ---
 int next_p = 0;
 int pt = 0;
 int bonus = 0;
@@ -71,23 +70,19 @@ function load_prof(p){
 init { load_prof(1); }
 
 main {
-    // SHARE + OPTIONS → seuraava profiili
     if(get_val(SHARE) && event_press(OPTIONS)){
         next_p = prof + 1; if(next_p > 5) next_p = 1; load_prof(next_p);
     }
 
-    // SHARE + CIRCLE → kaikki modit päälle/pois
     if(get_val(SHARE) && event_press(CIRCLE)){
         if(AR_ON || AA_ON || ROT_ON){ AR_ON=FALSE; AA_ON=FALSE; ROT_ON=FALSE; combo_run(OffPulse); }
         else                        { AR_ON=TRUE;  AA_ON=TRUE;  ROT_ON=FALSE; combo_run(OnPulse); }
     }
 
-    // Togglet
     if(get_val(SHARE) && event_press(FIRE)){ AR_ON = !AR_ON; if(AR_ON) combo_run(OnPulse); else combo_run(OffPulse); }
     if(get_val(SHARE) && event_press(ADS)){  AA_ON = !AA_ON; if(AA_ON) combo_run(OnPulse); else combo_run(OffPulse); }
     if(get_val(SHARE) && event_press(L3)){   ROT_ON = !ROT_ON; if(ROT_ON) combo_run(OnPulse); else combo_run(OffPulse); }
 
-    // Hienosäätö
     if(get_val(SHARE)){
         if(event_press(UP))    { AR_Y = clampi(AR_Y + 1, -AR_MAX, AR_MAX); combo_run(Ping); }
         if(event_press(DOWN))  { AR_Y = clampi(AR_Y - 1, -AR_MAX, AR_MAX); combo_run(Ping); }
@@ -95,7 +90,6 @@ main {
         if(event_press(LEFT))  { AR_X = clampi(AR_X - 1, -AR_MAX, AR_MAX); combo_run(Ping); }
     }
 
-    // Anti-Recoil (ADS + FIRE)
     if(AR_ON && get_val(ADS) > 10 && get_val(FIRE) > 10){
         pt = get_ptime(FIRE);
         bonus = 0;
@@ -111,7 +105,6 @@ main {
         set_val(RX_AX, clampi(get_val(RX_AX) + eff_x, -100, 100));
     }
 
-    // Aim Assist (ADS, kun et itse liiku)
     if(AA_ON && get_val(ADS) > 10){
         ok = TRUE;
         if(AA_RESPECT_STICK){
@@ -123,20 +116,21 @@ main {
         } else { combo_stop(AA_Star); was_ads=FALSE; }
     } else { combo_stop(AA_Star); was_ads=FALSE; }
 
-if(ROT_ON && get_val(ADS) > 10){
-    if(abs(get_val(RX_AX)) < DEADZONE && abs(get_val(RY_AX)) < DEADZONE){
-        if(rot_dir > 0) {
-            set_val(LX_AX, clampi(get_val(LX_AX) + ROT_STEP, -100, 100));
+    if(ROT_ON && get_val(ADS) > 10){
+        if(abs(get_val(RX_AX)) < DEADZONE && abs(get_val(RY_AX)) < DEADZONE){
+            if(rot_dir > 0) {
+                set_val(LX_AX, clampi(get_val(LX_AX) + ROT_STEP, -100, 100));
+            } else {
+                set_val(LX_AX, clampi(get_val(LX_AX) - ROT_STEP, -100, 100));
+            }
+            if(!combo_running(RotateFlip)) combo_run(RotateFlip);
         } else {
-            set_val(LX_AX, clampi(get_val(LX_AX) - ROT_STEP, -100, 100));
+            combo_stop(RotateFlip);
         }
-        if(!combo_running(RotateFlip)) combo_run(RotateFlip);
     } else {
         combo_stop(RotateFlip);
     }
-} else {
-    combo_stop(RotateFlip);
-}
+}  // <-- tärkeä: päättää main-lohkon
 
 combo AA_Star {
     set_val(RX_AX, clampi(get_val(RX_AX)+AA_STEP, -100, 100)); wait(AA_WAIT);
@@ -153,5 +147,3 @@ combo RotateFlip {
     wait(ROT_WAIT);
     rot_dir = -rot_dir;
 }
-
-
