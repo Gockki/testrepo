@@ -60,11 +60,11 @@ function abs(a){ if(a<0)return -a; return a; }
 
 function load_prof(p){
     prof = p;
-    if(p==1){ AR_Y=P1_Y; AR_X=P1_X; }
-    if(p==2){ AR_Y=P2_Y; AR_X=P2_X; }
-    if(p==3){ AR_Y=P3_Y; AR_X=P3_X; }
-    if(p==4){ AR_Y=P4_Y; AR_X=P4_X; }
-    if(p==5){ AR_Y=P5_Y; AR_X=P5_X; }
+    if(p == 1){ AR_Y=P1_Y; AR_X=P1_X; }
+    if(p == 2){ AR_Y=P2_Y; AR_X=P2_X; }
+    if(p == 3){ AR_Y=P3_Y; AR_X=P3_X; }
+    if(p == 4){ AR_Y=P4_Y; AR_X=P4_X; }
+    if(p == 5){ AR_Y=P5_Y; AR_X=P5_X; }
     combo_run(Ping);
 }
 
@@ -151,3 +151,4 @@ combo RotateFlip {
     wait(ROT_WAIT);
     rot_dir = -rot_dir;
 }
+
