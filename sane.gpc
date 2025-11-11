@@ -1,0 +1,141 @@
+define ADS   = PS4_L1;   // L1 tähtäys
+define FIRE  = PS4_R1;   // R1 ampuminen
+define RX_AX = RX;
+define RY_AX = RY;
+define LX_AX = LX;
+
+define SHARE   = PS4_SHARE;
+define OPTIONS = PS4_OPTIONS;
+define UP      = PS4_UP;
+define DOWN    = PS4_DOWN;
+define LEFT    = PS4_LEFT;
+define RIGHT   = PS4_RIGHT;
+define L3      = PS4_L3;
+define R3      = PS4_R3;
+define CIRCLE  = PS4_CIRCLE;
+
+int DEADZONE = 14;
+int AR_MAX   = 75;
+
+int AR_ON = TRUE;
+int AA_ON = TRUE;
+int ROT_ON = FALSE;
+
+int prof = 1;
+int P1_Y = 22, P1_X = 2;
+int P2_Y = 16, P2_X = 3;
+int P3_Y = 30, P3_X = 5;
+int P4_Y = 20, P4_X = 1;
+int P5_Y = 36, P5_X = 6;
+
+int AR_Y = 22, AR_X = 2;
+
+int RAMP_MS = 340;
+int RAMP_BONUS_Y = 7;
+
+int AA_STEP = 7;
+int AA_WAIT = 23;
+int AA_RESPECT_STICK = TRUE;
+
+int ROT_STEP = 10;
+int ROT_WAIT = 45;
+int rot_dir = 1;
+
+int was_ads = FALSE;
+
+combo Ping { set_rumble(RUMBLE_B, 45); wait(90); set_rumble(RUMBLE_B, 0); }
+combo OnPulse { set_rumble(RUMBLE_A, 55); wait(140); set_rumble(RUMBLE_A, 0); }
+combo OffPulse { set_rumble(RUMBLE_B, 80); wait(200); set_rumble(RUMBLE_B, 0); }
+
+function clampi(v, lo, hi){ if(v>hi)return hi; if(v<lo)return lo; return v; }
+function abs(a){ if(a<0)return -a; return a; }
+
+function load_prof(p){
+    prof = p;
+    if(p==1){ AR_Y=P1_Y; AR_X=P1_X; }
+    if(p==2){ AR_Y=P2_Y; AR_X=P2_X; }
+    if(p==3){ AR_Y=P3_Y; AR_X=P3_X; }
+    if(p==4){ AR_Y=P4_Y; AR_X=P4_X; }
+    if(p==5){ AR_Y=P5_Y; AR_X=P5_X; }
+    combo_run(Ping);
+}
+
+init { load_prof(1); }
+
+main {
+    if(get_val(SHARE) && event_press(OPTIONS)){
+        int p = prof + 1; if(p > 5) p = 1; load_prof(p);
+    }
+
+    if(get_val(SHARE) && event_press(CIRCLE)){
+        int any = (AR_ON || AA_ON || ROT_ON);
+        if(any){ AR_ON = FALSE; AA_ON = FALSE; ROT_ON = FALSE; combo_run(OffPulse); }
+        else   { AR_ON = TRUE;  AA_ON = TRUE;  ROT_ON = FALSE; combo_run(OnPulse); }
+    }
+
+    if(get_val(SHARE) && event_press(FIRE)){  AR_ON = !AR_ON;  if(AR_ON) combo_run(OnPulse); else combo_run(OffPulse); }
+    if(get_val(SHARE) && event_press(ADS)){   AA_ON = !AA_ON;  if(AA_ON) combo_run(OnPulse); else combo_run(OffPulse); }
+    if(get_val(SHARE) && event_press(L3)){    ROT_ON = !ROT_ON; if(ROT_ON) combo_run(OnPulse); else combo_run(OffPulse); }
+
+    if(get_val(SHARE)){
+        if(event_press(UP))    { AR_Y = clampi(AR_Y+1, -AR_MAX, AR_MAX); combo_run(Ping); }
+        if(event_press(DOWN))  { AR_Y = clampi(AR_Y-1, -AR_MAX, AR_MAX); combo_run(Ping); }
+        if(event_press(RIGHT)) { AR_X = clampi(AR_X+1, -AR_MAX, AR_MAX); combo_run(Ping); }
+        if(event_press(LEFT))  { AR_X = clampi(AR_X-1, -AR_MAX, AR_MAX); combo_run(Ping); }
+    }
+
+    if(AR_ON && get_val(ADS) > 10 && get_val(FIRE) > 10){
+        int pt = get_ptime(FIRE);
+        int bonus = 0;
+        if(pt <= RAMP_MS){
+            bonus = (RAMP_BONUS_Y * (RAMP_MS - pt)) / RAMP_MS;
+        }
+
+        int eff_y = AR_Y + bonus;
+        int eff_x = AR_X;
+
+        if(abs(get_val(RY_AX)) > 30) eff_y = eff_y / 2;
+        if(abs(get_val(RX_AX)) > 30) eff_x = eff_x / 2;
+
+        set_val(RY_AX, clampi(get_val(RY_AX) + eff_y, -100, 100));
+        set_val(RX_AX, clampi(get_val(RX_AX) + eff_x, -100, 100));
+    }
+
+    if(AA_ON && get_val(ADS) > 10){
+        int ok = TRUE;
+        if(AA_RESPECT_STICK){
+            if(abs(get_val(RX_AX)) >= DEADZONE || abs(get_val(RY_AX)) >= DEADZONE) ok = FALSE;
+        }
+        if(ok){
+            if(!was_ads){ combo_stop(AA_Star); combo_run(AA_Star); was_ads=TRUE; }
+            if(!combo_running(AA_Star)) combo_run(AA_Star);
+        } else { combo_stop(AA_Star); was_ads=FALSE; }
+    } else { combo_stop(AA_Star); was_ads=FALSE; }
+
+    if(ROT_ON && get_val(ADS) > 10){
+        if(abs(get_val(RX_AX)) < DEADZONE && abs(get_val(RY_AX)) < DEADZONE){
+            set_val(LX_AX, clampi(get_val(LX_AX) + (rot_dir>0? ROT_STEP : -ROT_STEP), -100, 100));
+            if(!combo_running(RotateFlip)) combo_run(RotateFlip);
+        } else {
+            combo_stop(RotateFlip);
+        }
+    } else {
+        combo_stop(RotateFlip);
+    }
+}
+
+combo AA_Star {
+    set_val(RX_AX, clampi(get_val(RX_AX)+AA_STEP, -100, 100)); wait(AA_WAIT);
+    set_val(RY_AX, clampi(get_val(RY_AX)+AA_STEP, -100, 100)); wait(AA_WAIT);
+    set_val(RX_AX, clampi(get_val(RX_AX)-AA_STEP, -100, 100)); wait(AA_WAIT);
+    set_val(RY_AX, clampi(get_val(RY_AX)-AA_STEP, -100, 100)); wait(AA_WAIT);
+    set_val(RX_AX, clampi(get_val(RX_AX)+AA_STEP, -100, 100)); wait(AA_WAIT);
+    set_val(RY_AX, clampi(get_val(RY_AX)-AA_STEP, -100, 100)); wait(AA_WAIT);
+    set_val(RX_AX, clampi(get_val(RX_AX)-AA_STEP, -100, 100)); wait(AA_WAIT);
+    set_val(RY_AX, clampi(get_val(RY_AX)+AA_STEP, -100, 100)); wait(AA_WAIT);
+}
+
+combo RotateFlip {
+    wait(ROT_WAIT);
+    rot_dir = -rot_dir;
+}
