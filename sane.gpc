@@ -1,5 +1,5 @@
-define ADS   = PS4_L1;   // L1 tähtäys
-define FIRE  = PS4_R1;   // R1 ampuminen
+define ADS   = PS4_L1;
+define FIRE  = PS4_R1;
 define RX_AX = RX;
 define RY_AX = RY;
 define LX_AX = LX;
@@ -43,6 +43,14 @@ int rot_dir = 1;
 
 int was_ads = FALSE;
 
+// --- etukäteen varatut apumuuttujat (korjaa 'unexpected NAME' -virheen) ---
+int next_p = 0;
+int pt = 0;
+int bonus = 0;
+int eff_y = 0;
+int eff_x = 0;
+int ok = 0;
+
 combo Ping { set_rumble(RUMBLE_B, 45); wait(90); set_rumble(RUMBLE_B, 0); }
 combo OnPulse { set_rumble(RUMBLE_A, 55); wait(140); set_rumble(RUMBLE_A, 0); }
 combo OffPulse { set_rumble(RUMBLE_B, 80); wait(200); set_rumble(RUMBLE_B, 0); }
@@ -63,20 +71,23 @@ function load_prof(p){
 init { load_prof(1); }
 
 main {
+    // SHARE + OPTIONS → seuraava profiili
     if(get_val(SHARE) && event_press(OPTIONS)){
-        int p = prof + 1; if(p > 5) p = 1; load_prof(p);
+        next_p = prof + 1; if(next_p > 5) next_p = 1; load_prof(next_p);
     }
 
+    // SHARE + CIRCLE → kaikki modit päälle/pois
     if(get_val(SHARE) && event_press(CIRCLE)){
-        int any = (AR_ON || AA_ON || ROT_ON);
-        if(any){ AR_ON = FALSE; AA_ON = FALSE; ROT_ON = FALSE; combo_run(OffPulse); }
-        else   { AR_ON = TRUE;  AA_ON = TRUE;  ROT_ON = FALSE; combo_run(OnPulse); }
+        if(AR_ON || AA_ON || ROT_ON){ AR_ON=FALSE; AA_ON=FALSE; ROT_ON=FALSE; combo_run(OffPulse); }
+        else                        { AR_ON=TRUE;  AA_ON=TRUE;  ROT_ON=FALSE; combo_run(OnPulse); }
     }
 
-    if(get_val(SHARE) && event_press(FIRE)){  AR_ON = !AR_ON;  if(AR_ON) combo_run(OnPulse); else combo_run(OffPulse); }
-    if(get_val(SHARE) && event_press(ADS)){   AA_ON = !AA_ON;  if(AA_ON) combo_run(OnPulse); else combo_run(OffPulse); }
-    if(get_val(SHARE) && event_press(L3)){    ROT_ON = !ROT_ON; if(ROT_ON) combo_run(OnPulse); else combo_run(OffPulse); }
+    // Togglet
+    if(get_val(SHARE) && event_press(FIRE)){ AR_ON = !AR_ON; if(AR_ON) combo_run(OnPulse); else combo_run(OffPulse); }
+    if(get_val(SHARE) && event_press(ADS)){  AA_ON = !AA_ON; if(AA_ON) combo_run(OnPulse); else combo_run(OffPulse); }
+    if(get_val(SHARE) && event_press(L3)){   ROT_ON = !ROT_ON; if(ROT_ON) combo_run(OnPulse); else combo_run(OffPulse); }
 
+    // Hienosäätö
     if(get_val(SHARE)){
         if(event_press(UP))    { AR_Y = clampi(AR_Y+1, -AR_MAX, AR_MAX); combo_run(Ping); }
         if(event_press(DOWN))  { AR_Y = clampi(AR_Y-1, -AR_MAX, AR_MAX); combo_run(Ping); }
@@ -84,15 +95,14 @@ main {
         if(event_press(LEFT))  { AR_X = clampi(AR_X-1, -AR_MAX, AR_MAX); combo_run(Ping); }
     }
 
+    // Anti-Recoil (ADS + FIRE)
     if(AR_ON && get_val(ADS) > 10 && get_val(FIRE) > 10){
-        int pt = get_ptime(FIRE);
-        int bonus = 0;
-        if(pt <= RAMP_MS){
-            bonus = (RAMP_BONUS_Y * (RAMP_MS - pt)) / RAMP_MS;
-        }
+        pt = get_ptime(FIRE);
+        bonus = 0;
+        if(pt <= RAMP_MS) bonus = (RAMP_BONUS_Y * (RAMP_MS - pt)) / RAMP_MS;
 
-        int eff_y = AR_Y + bonus;
-        int eff_x = AR_X;
+        eff_y = AR_Y + bonus;
+        eff_x = AR_X;
 
         if(abs(get_val(RY_AX)) > 30) eff_y = eff_y / 2;
         if(abs(get_val(RX_AX)) > 30) eff_x = eff_x / 2;
@@ -101,8 +111,9 @@ main {
         set_val(RX_AX, clampi(get_val(RX_AX) + eff_x, -100, 100));
     }
 
+    // Aim Assist (ADS, kun et itse liiku)
     if(AA_ON && get_val(ADS) > 10){
-        int ok = TRUE;
+        ok = TRUE;
         if(AA_RESPECT_STICK){
             if(abs(get_val(RX_AX)) >= DEADZONE || abs(get_val(RY_AX)) >= DEADZONE) ok = FALSE;
         }
@@ -112,9 +123,10 @@ main {
         } else { combo_stop(AA_Star); was_ads=FALSE; }
     } else { combo_stop(AA_Star); was_ads=FALSE; }
 
+    // Kevyt rotaatioboosti (oletuksena pois)
     if(ROT_ON && get_val(ADS) > 10){
         if(abs(get_val(RX_AX)) < DEADZONE && abs(get_val(RY_AX)) < DEADZONE){
-            set_val(LX_AX, clampi(get_val(LX_AX) + (rot_dir>0? ROT_STEP : -ROT_STEP), -100, 100));
+            set_val(LX_AX, clampi(get_val(LX_AX) + (rot_dir>0 ? ROT_STEP : -ROT_STEP), -100, 100));
             if(!combo_running(RotateFlip)) combo_run(RotateFlip);
         } else {
             combo_stop(RotateFlip);
